@@ -1,0 +1,25 @@
+#!/bin/sh
+# Pre-commit guard: run the same ruff lint that CI runs, against the
+# already-running server container. Mirrors `.github/workflows/ci.yml`.
+#
+# Activation (one-time, per clone):
+#   git config core.hooksPath .githooks
+#
+# Bypass for one commit (use sparingly, e.g. an in-progress branch push):
+#   git commit --no-verify
+#
+# We deliberately fail when the server container isn't running rather than
+# silently skip — a silent skip would defeat the whole purpose of catching
+# lint before CI does.
+
+set -e
+
+if ! docker compose ps --services --filter status=running 2>/dev/null | grep -q '^server$'; then
+    echo "pre-commit: server container is not running." >&2
+    echo "  Start it:    docker compose up -d server" >&2
+    echo "  Bypass once: git commit --no-verify" >&2
+    exit 1
+fi
+
+echo "pre-commit: ruff check (server/app + server/tests)..."
+docker compose exec -T server ruff check app tests
