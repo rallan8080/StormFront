@@ -8,6 +8,7 @@ For now: start Mongo via docker compose, then run pytest.
 """
 
 import asyncio
+import contextlib
 import os
 import uuid
 from collections.abc import AsyncIterator, Iterator
@@ -29,16 +30,18 @@ async def client() -> AsyncIterator[AsyncClient]:
 
     get_settings.cache_clear()
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        async with app.router.lifespan_context(app):
-            try:
-                yield ac
-            finally:
-                # Drop the test DB *before* leaving the lifespan context —
-                # lifespan_db's finally block calls database.client.close(),
-                # after which the motor client raises InvalidOperation.
-                if database.client is not None and database.db is not None:
-                    await database.client.drop_database(database.db.name)
+    async with (
+        AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac,
+        app.router.lifespan_context(app),
+    ):
+        try:
+            yield ac
+        finally:
+            # Drop the test DB *before* leaving the lifespan context —
+            # lifespan_db's finally block calls database.client.close(),
+            # after which the motor client raises InvalidOperation.
+            if database.client is not None and database.db is not None:
+                await database.client.drop_database(database.db.name)
 
 
 @pytest.fixture
@@ -71,8 +74,6 @@ def sync_client() -> Iterator:
         tmp = AsyncIOMotorClient(settings.mongo_url)
         await tmp.drop_database(settings.mongo_db)
 
-    try:
+    # Best-effort cleanup; an unreachable Mongo shouldn't fail an otherwise-passing test.
+    with contextlib.suppress(Exception):
         asyncio.run(_drop())
-    except Exception:
-        # Best-effort cleanup; an unreachable Mongo shouldn't fail an otherwise-passing test.
-        pass

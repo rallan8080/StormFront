@@ -54,7 +54,10 @@ _ITEMS = [
         "id": "rusty-key",
         "name": "rusty key",
         "shortDescription": "a rusty iron key",
-        "longDescription": "An old iron key, pitted with rust. Whatever it opens has likely long been lost.",
+        "longDescription": (
+            "An old iron key, pitted with rust. "
+            "Whatever it opens has likely long been lost."
+        ),
         "takeable": True,
         "weight": 0.1,
         "tags": ["key"],
@@ -67,7 +70,10 @@ _NPCS = [
         "id": "town-crier",
         "name": "town crier",
         "shortDescription": "a weary town crier",
-        "longDescription": "A graying man in a faded cloak. He looks like he has been here a very long time.",
+        "longDescription": (
+            "A graying man in a faded cloak. "
+            "He looks like he has been here a very long time."
+        ),
         "homeRoomId": "town-square",
         "dialogue": [
             "Hear ye, hear ye! Naught of consequence today.",

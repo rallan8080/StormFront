@@ -57,17 +57,21 @@ def test_ws_rejects_missing_token(sync_client: TestClient) -> None:
     # surfaces this as a WebSocketDisconnect when the body tries to read.
     from starlette.websockets import WebSocketDisconnect
 
-    with pytest.raises(WebSocketDisconnect):
-        with sync_client.websocket_connect("/ws") as ws:
-            ws.receive_json()
+    with (
+        pytest.raises(WebSocketDisconnect),
+        sync_client.websocket_connect("/ws") as ws,
+    ):
+        ws.receive_json()
 
 
 def test_ws_rejects_invalid_token(sync_client: TestClient) -> None:
     from starlette.websockets import WebSocketDisconnect
 
-    with pytest.raises(WebSocketDisconnect):
-        with sync_client.websocket_connect("/ws?token=not-a-real-jwt") as ws:
-            ws.receive_json()
+    with (
+        pytest.raises(WebSocketDisconnect),
+        sync_client.websocket_connect("/ws?token=not-a-real-jwt") as ws,
+    ):
+        ws.receive_json()
 
 
 # ---- welcome + ping ----
@@ -419,11 +423,13 @@ def test_quit_closes_the_socket_cleanly(sync_client: TestClient) -> None:
 
     token = _register_and_create(sync_client, "ada@test.com", "Ada")
 
-    with pytest.raises(WebSocketDisconnect) as exc_info:
-        with sync_client.websocket_connect(f"/ws?token={token}") as ws:
-            _drain_welcome(ws)
-            ws.send_json({"type": "client.command.quit"})
-            ws.receive_json()  # should not return; raises WebSocketDisconnect
+    with (
+        pytest.raises(WebSocketDisconnect) as exc_info,
+        sync_client.websocket_connect(f"/ws?token={token}") as ws,
+    ):
+        _drain_welcome(ws)
+        ws.send_json({"type": "client.command.quit"})
+        ws.receive_json()  # should not return; raises WebSocketDisconnect
 
     assert exc_info.value.code == 1000
 

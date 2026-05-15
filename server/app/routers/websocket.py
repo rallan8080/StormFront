@@ -18,6 +18,7 @@ service in docker-compose.yml is reserved for that change.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 from datetime import UTC, datetime
@@ -630,11 +631,9 @@ async def ws_endpoint(ws: WebSocket, token: str = Query(default="")) -> None:
                 logger.exception(
                     "Unhandled error processing message; player=%s", player.name,
                 )
-                try:
+                # Socket likely already broken; let the outer disconnect path handle it.
+                with contextlib.suppress(Exception):
                     await _send_error(ws, "INTERNAL_ERROR", "Internal server error")
-                except Exception:
-                    # Socket likely already broken; let the outer disconnect path handle it.
-                    pass
                 continue
             if result is None:
                 # Client requested quit. Close cleanly, then break so we never
