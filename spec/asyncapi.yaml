@@ -1,0 +1,461 @@
+asyncapi: '2.6.0'
+info:
+  title: StormFront WebSocket API
+  version: '0.1.0'
+  description: |
+    Bidirectional message catalog for the StormFront MUD game session.
+
+    A single WebSocket channel `/ws` carries all messages after authentication.
+    Every message is a JSON envelope `{ "type": "<event-name>", "data": { ... } }`.
+
+    All `client.*` messages are sent from the browser to the server.
+    All `server.*` messages are sent from the server to the browser.
+
+servers:
+  local:
+    url: ws://localhost:8000
+    protocol: ws
+    description: Local development server.
+
+channels:
+  /ws:
+    description: |
+      The single game-session channel. The client opens this WebSocket with a
+      JWT in the `Authorization` header (or query string for browsers that
+      cannot set headers). After successful auth, the server sends a
+      `server.welcome` and any number of subsequent event messages.
+    publish:
+      operationId: clientToServer
+      summary: Messages the client publishes to the server.
+      message:
+        oneOf:
+          - $ref: '#/components/messages/ClientCommandMove'
+          - $ref: '#/components/messages/ClientCommandLook'
+          - $ref: '#/components/messages/ClientCommandSay'
+          - $ref: '#/components/messages/ClientCommandShout'
+          - $ref: '#/components/messages/ClientCommandTake'
+          - $ref: '#/components/messages/ClientCommandDrop'
+          - $ref: '#/components/messages/ClientCommandInventory'
+          - $ref: '#/components/messages/ClientCommandWho'
+          - $ref: '#/components/messages/ClientCommandQuit'
+          - $ref: '#/components/messages/ClientPing'
+    subscribe:
+      operationId: serverToClient
+      summary: Messages the server pushes to the client.
+      message:
+        oneOf:
+          - $ref: '#/components/messages/ServerWelcome'
+          - $ref: '#/components/messages/ServerError'
+          - $ref: '#/components/messages/ServerRoomEntered'
+          - $ref: '#/components/messages/ServerPlayerArrived'
+          - $ref: '#/components/messages/ServerPlayerDeparted'
+          - $ref: '#/components/messages/ServerChatSay'
+          - $ref: '#/components/messages/ServerChatShout'
+          - $ref: '#/components/messages/ServerInventoryUpdated'
+          - $ref: '#/components/messages/ServerItemTaken'
+          - $ref: '#/components/messages/ServerItemDropped'
+          - $ref: '#/components/messages/ServerNpcSpoke'
+          - $ref: '#/components/messages/ServerExamineResult'
+          - $ref: '#/components/messages/ServerWhoList'
+          - $ref: '#/components/messages/ServerPong'
+
+components:
+  messages:
+    ClientCommandMove:
+      name: client.command.move
+      title: Move command
+      summary: Move the player through an exit in the current room.
+      payload:
+        type: object
+        required: [type, data]
+        properties:
+          type: { const: client.command.move }
+          data:
+            type: object
+            required: [direction]
+            properties:
+              direction:
+                type: string
+                enum: [north, south, east, west, northeast, northwest, southeast, southwest, up, down]
+
+    ClientCommandLook:
+      name: client.command.look
+      title: Look command
+      summary: Look at the current room, or at a specific item / NPC / player by name.
+      payload:
+        type: object
+        required: [type]
+        properties:
+          type: { const: client.command.look }
+          data:
+            type: object
+            properties:
+              target:
+                type: string
+                description: |
+                  Name of an item, NPC, or player to examine. Omit to look at the whole room.
+
+    ClientCommandSay:
+      name: client.command.say
+      title: Say (room chat)
+      summary: Send a chat message visible only to players in the current room.
+      payload:
+        type: object
+        required: [type, data]
+        properties:
+          type: { const: client.command.say }
+          data:
+            type: object
+            required: [message]
+            properties:
+              message: { type: string, minLength: 1, maxLength: 500 }
+
+    ClientCommandShout:
+      name: client.command.shout
+      title: Shout (global chat)
+      summary: Send a chat message visible to all online players.
+      payload:
+        type: object
+        required: [type, data]
+        properties:
+          type: { const: client.command.shout }
+          data:
+            type: object
+            required: [message]
+            properties:
+              message: { type: string, minLength: 1, maxLength: 500 }
+
+    ClientCommandTake:
+      name: client.command.take
+      title: Take item
+      summary: Pick up an item from the current room.
+      payload:
+        type: object
+        required: [type, data]
+        properties:
+          type: { const: client.command.take }
+          data:
+            type: object
+            required: [target]
+            properties:
+              target:
+                type: string
+                description: Name of the item to take.
+
+    ClientCommandDrop:
+      name: client.command.drop
+      title: Drop item
+      summary: Drop an item from inventory into the current room.
+      payload:
+        type: object
+        required: [type, data]
+        properties:
+          type: { const: client.command.drop }
+          data:
+            type: object
+            required: [target]
+            properties:
+              target: { type: string }
+
+    ClientCommandInventory:
+      name: client.command.inventory
+      title: List inventory
+      payload:
+        type: object
+        required: [type]
+        properties:
+          type: { const: client.command.inventory }
+          data:
+            type: object
+            additionalProperties: false
+
+    ClientCommandWho:
+      name: client.command.who
+      title: List online players
+      payload:
+        type: object
+        required: [type]
+        properties:
+          type: { const: client.command.who }
+          data:
+            type: object
+            additionalProperties: false
+
+    ClientCommandQuit:
+      name: client.command.quit
+      title: Quit
+      summary: |
+        End the game session cleanly. On receipt the server closes the
+        WebSocket with normal-closure code 1000 and reason "quit". No
+        further messages are sent.
+      payload:
+        type: object
+        required: [type]
+        properties:
+          type: { const: client.command.quit }
+
+    ClientPing:
+      name: client.ping
+      title: Keep-alive ping
+      payload:
+        type: object
+        required: [type]
+        properties:
+          type: { const: client.ping }
+
+    # ---- server -> client ----
+
+    ServerWelcome:
+      name: server.welcome
+      title: Welcome (initial server message)
+      summary: Sent once on successful auth. Includes the player's profile and current room.
+      payload:
+        type: object
+        required: [type, data]
+        properties:
+          type: { const: server.welcome }
+          data:
+            type: object
+            required: [player, room]
+            properties:
+              player: { $ref: 'schemas/player.json' }
+              room:   { $ref: '#/components/schemas/RoomView' }
+
+    ServerError:
+      name: server.error
+      title: Error
+      summary: |
+        Sent in response to an invalid command or other recoverable error.
+
+        Fatal errors close the WebSocket with a status code instead of (or
+        in addition to) sending this frame:
+          - 1000 normal closure (client sent client.command.quit; reason: "quit")
+          - 1008 policy violation (missing/invalid JWT, or account has no character)
+          - 1011 internal error (e.g. starting room missing; world not seeded)
+      payload:
+        type: object
+        required: [type, data]
+        properties:
+          type: { const: server.error }
+          data:
+            type: object
+            required: [code, message]
+            properties:
+              code:    { type: string, description: 'machine-readable error code (e.g. UNKNOWN_DIRECTION)' }
+              message: { type: string, description: 'human-readable error message' }
+
+    ServerRoomEntered:
+      name: server.room.entered
+      title: Room entered
+      summary: Sent when the player arrives in a new room (or on initial connect).
+      payload:
+        type: object
+        required: [type, data]
+        properties:
+          type: { const: server.room.entered }
+          data: { $ref: '#/components/schemas/RoomView' }
+
+    ServerPlayerArrived:
+      name: server.player.arrived
+      title: Another player arrived
+      summary: Sent to everyone in a room when another player enters.
+      payload:
+        type: object
+        required: [type, data]
+        properties:
+          type: { const: server.player.arrived }
+          data:
+            type: object
+            required: [playerName, fromDirection]
+            properties:
+              playerName:    { type: string }
+              fromDirection: { type: string, description: 'direction they came from, from observers viewpoint' }
+
+    ServerPlayerDeparted:
+      name: server.player.departed
+      title: Another player left
+      payload:
+        type: object
+        required: [type, data]
+        properties:
+          type: { const: server.player.departed }
+          data:
+            type: object
+            required: [playerName, toDirection]
+            properties:
+              playerName:  { type: string }
+              toDirection: { type: string }
+
+    ServerChatSay:
+      name: server.chat.say
+      title: Room chat received
+      payload:
+        type: object
+        required: [type, data]
+        properties:
+          type: { const: server.chat.say }
+          data:
+            type: object
+            required: [from, message]
+            properties:
+              from:    { type: string }
+              message: { type: string }
+
+    ServerChatShout:
+      name: server.chat.shout
+      title: Global chat received
+      payload:
+        type: object
+        required: [type, data]
+        properties:
+          type: { const: server.chat.shout }
+          data:
+            type: object
+            required: [from, message]
+            properties:
+              from:    { type: string }
+              message: { type: string }
+
+    ServerInventoryUpdated:
+      name: server.inventory.updated
+      title: Inventory snapshot
+      summary: Full inventory state sent after any take/drop, or on demand.
+      payload:
+        type: object
+        required: [type, data]
+        properties:
+          type: { const: server.inventory.updated }
+          data:
+            type: object
+            required: [items]
+            properties:
+              items:
+                type: array
+                items: { $ref: 'schemas/item.json' }
+
+    ServerExamineResult:
+      name: server.examine.result
+      title: Examine result
+      summary: |
+        Sent in response to `client.command.look` with a `target`.
+        Returns the name, kind (item / npc / player), and full description
+        of the matched entity. If no match exists in the current room, the
+        server replies with `server.error` (code `LOOK_NOT_FOUND`) instead.
+      payload:
+        type: object
+        required: [type, data]
+        properties:
+          type: { const: server.examine.result }
+          data:
+            type: object
+            required: [name, kind, description]
+            properties:
+              name:        { type: string }
+              kind:        { type: string, enum: [item, npc, player] }
+              description: { type: string }
+
+    ServerItemTaken:
+      name: server.item.taken
+      title: Item taken
+      summary: |
+        Sent to other players in the room when someone picks up an item.
+        The actor themselves receives `server.inventory.updated` instead.
+      payload:
+        type: object
+        required: [type, data]
+        properties:
+          type: { const: server.item.taken }
+          data:
+            type: object
+            required: [playerName, itemName]
+            properties:
+              playerName: { type: string }
+              itemName:   { type: string }
+
+    ServerItemDropped:
+      name: server.item.dropped
+      title: Item dropped
+      summary: |
+        Sent to other players in the room when someone drops an item.
+        The actor themselves receives `server.inventory.updated` instead.
+      payload:
+        type: object
+        required: [type, data]
+        properties:
+          type: { const: server.item.dropped }
+          data:
+            type: object
+            required: [playerName, itemName]
+            properties:
+              playerName: { type: string }
+              itemName:   { type: string }
+
+    ServerNpcSpoke:
+      name: server.npc.spoke
+      title: NPC dialogue line
+      payload:
+        type: object
+        required: [type, data]
+        properties:
+          type: { const: server.npc.spoke }
+          data:
+            type: object
+            required: [npcName, message]
+            properties:
+              npcName: { type: string }
+              message: { type: string }
+
+    ServerWhoList:
+      name: server.who.list
+      title: Online players
+      summary: |
+        Sent in response to `client.command.who`. Lists the names of all
+        currently connected players — i.e. those with an active WebSocket
+        session, derived from the in-process broker's registry. Includes
+        the requester themselves. Sorted alphabetically (case-insensitive).
+      payload:
+        type: object
+        required: [type, data]
+        properties:
+          type: { const: server.who.list }
+          data:
+            type: object
+            required: [players]
+            properties:
+              players:
+                type: array
+                items: { type: string }
+
+    ServerPong:
+      name: server.pong
+      title: Keep-alive pong
+      payload:
+        type: object
+        required: [type]
+        properties:
+          type: { const: server.pong }
+
+  schemas:
+    RoomView:
+      type: object
+      description: |
+        The room as the player currently sees it: the persistent Room definition
+        joined with transient state (items present, players present, NPCs present).
+      required: [id, name, description, exits, items, players, npcs]
+      properties:
+        id:          { type: string }
+        name:        { type: string }
+        description: { type: string }
+        exits:
+          type: array
+          items: { $ref: 'schemas/exit.json' }
+        items:
+          type: array
+          items: { $ref: 'schemas/item.json' }
+        players:
+          type: array
+          description: Names of other players currently in the room (excluding self).
+          items: { type: string }
+        npcs:
+          type: array
+          items: { $ref: 'schemas/npc.json' }

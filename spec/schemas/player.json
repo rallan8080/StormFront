@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stormfront.example/schemas/player.json",
+  "title": "Player",
+  "description": "A player character belonging to an account. One account may eventually have multiple characters; MVP assumes one.",
+  "type": "object",
+  "required": ["id", "accountId", "name", "currentRoomId", "createdAt"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string" },
+    "accountId": {
+      "type": "string",
+      "description": "Owning account; not exposed to other clients."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 24,
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+      "description": "Display name visible to other players. Unique, case-insensitive."
+    },
+    "description": {
+      "type": "string",
+      "description": "How other players see this character when they examine them."
+    },
+    "currentRoomId": { "type": "string" },
+    "inventoryItemIds": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "lastSeenAt": { "type": "string", "format": "date-time" }
+  }
+}

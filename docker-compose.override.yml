@@ -1,0 +1,47 @@
+# Developer override: enables hot reload on the server.
+#
+# Compose auto-loads this file when running `docker compose up` from this
+# directory, so the base docker-compose.yml stays production-ish. To run
+# without it (e.g. to mimic prod locally), use:
+#   docker compose -f docker-compose.yml up
+
+services:
+  server:
+    build:
+      # The dev target adds pytest / ruff / mypy and bakes tests into the
+      # image, so `docker compose exec server pytest tests/ -v` works with
+      # no install step. See server/Dockerfile.
+      target: dev
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+      --reload-dir /app/app
+    volumes:
+      # Bind-mount source + tests + pyproject so edits flow into the
+      # running container without a rebuild. These shadow the copies the
+      # dev image baked in.
+      - ./server/app:/app/app
+      - ./server/tests:/app/tests
+      - ./server/pyproject.toml:/app/pyproject.toml
+
+  client:
+    build:
+      # Vite dev server with HMR. The base file targets runtime (nginx
+      # serving the production bundle); this override flips it to dev.
+      target: dev
+    command: npm run dev -- --host 0.0.0.0 --port 5173
+    environment:
+      VITE_API_BASE: http://localhost:8000
+      VITE_WS_BASE: ws://localhost:8000
+    # Sole port mapping for the client; the base file deliberately doesn't
+    # set one (see comment there). Vite listens on 5173 inside the container.
+    ports:
+      - "5173:5173"
+    volumes:
+      # Bind-mount the whole client dir for HMR. The anonymous volume on
+      # /app/node_modules preserves the container's installed deps so the
+      # host's missing/foreign node_modules can't shadow them.
+      - ./client:/app
+      - /app/node_modules

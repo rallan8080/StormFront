@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stormfront.example/schemas/npc.json",
+  "title": "Npc",
+  "description": "A non-player character. MVP NPCs are stationary and have a fixed dialogue pool.",
+  "type": "object",
+  "required": ["id", "name", "shortDescription", "homeRoomId"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+    "shortDescription": {
+      "type": "string",
+      "description": "One-line label shown when the NPC is listed in a room."
+    },
+    "longDescription": {
+      "type": "string",
+      "description": "Full description shown when the player examines the NPC."
+    },
+    "homeRoomId": { "type": "string" },
+    "dialogue": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Pool of lines the NPC may say when greeted; one is chosen at random."
+    }
+  }
+}

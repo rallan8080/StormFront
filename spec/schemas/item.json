@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stormfront.example/schemas/item.json",
+  "title": "Item",
+  "description": "A pickup-able or examinable object that can live in a room or a player's inventory.",
+  "type": "object",
+  "required": ["id", "name", "shortDescription"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string" },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60
+    },
+    "shortDescription": {
+      "type": "string",
+      "description": "Brief one-line label shown when the item is listed (e.g., in a room or inventory)."
+    },
+    "longDescription": {
+      "type": "string",
+      "description": "Full description shown when the player examines the item."
+    },
+    "takeable": {
+      "type": "boolean",
+      "default": true
+    },
+    "weight": {
+      "type": "number",
+      "minimum": 0,
+      "default": 1
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

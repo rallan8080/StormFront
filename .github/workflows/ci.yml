@@ -1,0 +1,71 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  server:
+    name: Server (FastAPI)
+    runs-on: ubuntu-latest
+
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: server/pyproject.toml
+
+      - name: Install dependencies
+        working-directory: server
+        run: pip install -e ".[dev]"
+
+      - name: Lint with ruff
+        working-directory: server
+        run: ruff check app tests
+
+      - name: Run tests (unit + integration)
+        working-directory: server
+        env:
+          MONGO_URL: mongodb://localhost:27017
+          JWT_SECRET: ci-test-secret-not-real-just-long-enough
+        run: pytest -v
+
+  client:
+    name: Client (Vite/React)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        working-directory: client
+        run: npm install
+
+      - name: Typecheck
+        working-directory: client
+        run: npm run typecheck
+
+      - name: Build
+        working-directory: client
+        run: npm run build

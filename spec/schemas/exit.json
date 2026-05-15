@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stormfront.example/schemas/exit.json",
+  "title": "Exit",
+  "description": "A directional connection from one room to another.",
+  "type": "object",
+  "required": ["direction", "toRoomId"],
+  "additionalProperties": false,
+  "properties": {
+    "direction": {
+      "type": "string",
+      "enum": [
+        "north", "south", "east", "west",
+        "northeast", "northwest", "southeast", "southwest",
+        "up", "down"
+      ]
+    },
+    "toRoomId": {
+      "type": "string",
+      "description": "Identifier of the destination Room."
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional flavor text shown when the player examines the exit."
+    },
+    "locked": {
+      "type": "boolean",
+      "default": false
+    },
+    "keyItemId": {
+      "type": "string",
+      "description": "If locked, the Item id required to pass."
+    }
+  }
+}

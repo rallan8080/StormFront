@@ -1,0 +1,51 @@
+# --- Secrets / local dev ---
+.env
+*.local.env
+localdev.env
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# --- Node / Vite / React ---
+node_modules/
+.pnp
+.pnp.js
+.yarn/
+.cache/
+client/dist/
+client/build/
+.eslintcache
+.parcel-cache/
+
+# --- Editor / OS ---
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- Docker ---
+# Note: docker-compose.override.yml is intentionally NOT ignored — it
+# carries the dev-target selection, port mapping, and bind mounts that
+# `docker compose up` needs to give a fresh clone a working dev stack.
+
+# --- Logs ---
+*.log
+logs/
+
+# --- Generated code from specs (regenerable, do not commit) ---
+client/src/generated/
+server/app/generated/

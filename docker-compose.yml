@@ -1,0 +1,74 @@
+# Local development stack for StormFront.
+#
+# Usage:
+#   1. Copy .env.example to .env and set JWT_SECRET
+#   2. docker compose up --build
+#
+# Services:
+#   mongo   MongoDB 7, persists to a named volume
+#   redis   Redis 7, reserved for cross-process WS fan-out
+#   server  FastAPI server, depends on mongo + redis being healthy
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  server:
+    build:
+      context: ./server
+      target: runtime
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      MONGO_URL: mongodb://mongo:27017
+      MONGO_DB: stormfront
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env (>= 16 chars)}
+      JWT_ALGORITHM: HS256
+      JWT_ACCESS_TTL_MIN: "15"
+      JWT_REFRESH_TTL_DAYS: "30"
+      CORS_ORIGINS: '["http://localhost:5173"]'
+      LOG_LEVEL: info
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  client:
+    build:
+      context: ./client
+      target: runtime
+    depends_on:
+      - server
+    # Port mapping intentionally lives in docker-compose.override.yml so the
+    # dev stage's 5173:5173 doesn't have to fight the prod stage's 5173:80
+    # via Compose's list-merge semantics. A separate prod compose file can
+    # publish 5173:80 (or 80:80) when there is one.
+    restart: unless-stopped
+
+volumes:
+  mongo-data:

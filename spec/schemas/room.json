@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stormfront.example/schemas/room.json",
+  "title": "Room",
+  "description": "A location in the world. Persistent definition; transient state (occupants) is broadcast separately.",
+  "type": "object",
+  "required": ["id", "name", "description"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable room identifier (e.g., 'town-square')."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "description": {
+      "type": "string",
+      "description": "Long-form description shown when a player looks at the room."
+    },
+    "exits": {
+      "type": "array",
+      "items": { "$ref": "exit.json" },
+      "default": []
+    },
+    "itemIds": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Items currently on the ground in this room.",
+      "default": []
+    },
+    "npcIds": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "NPCs whose home is this room.",
+      "default": []
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Free-form tags for filtering / behavior hooks (e.g., 'safe-zone', 'indoors')."
+    }
+  }
+}

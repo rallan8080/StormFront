@@ -1,0 +1,21 @@
+.venv
+venv
+env
+__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+dist
+build
+*.egg-info
+# tests/ is intentionally NOT ignored — the dev stage in the Dockerfile
+# COPYs it in. The runtime stage doesn't, so it stays out of the prod image.
+.env
+.env.*
+*.local.env
+README.md
+.git
+.gitignore

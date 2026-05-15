@@ -1,0 +1,158 @@
+openapi: '3.1.0'
+info:
+  title: StormFront HTTP API
+  version: '0.1.0'
+  description: |
+    HTTP surface for StormFront. Used for account/auth and character lifecycle.
+    Real-time gameplay happens over the WebSocket channel described in asyncapi.yaml.
+servers:
+  - url: http://localhost:8000
+    description: Local development
+
+paths:
+  /healthz:
+    get:
+      summary: Heartbeat
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+
+  /auth/register:
+    post:
+      summary: Create a new account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenPair' }
+        '409': { description: Email already in use }
+
+  /auth/login:
+    post:
+      summary: Exchange credentials for a JWT pair
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Login OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenPair' }
+        '401': { description: Bad credentials }
+
+  /auth/refresh:
+    post:
+      summary: Exchange a refresh token for a new access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '200':
+          description: New token pair
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenPair' }
+
+  /me:
+    get:
+      summary: Current account
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Account
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Account' }
+
+  /characters:
+    get:
+      summary: List characters for the current account
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Characters
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: 'schemas/player.json' }
+    post:
+      summary: Create a character
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:        { type: string, minLength: 3, maxLength: 24, pattern: '^[A-Za-z][A-Za-z0-9_-]*$' }
+                description: { type: string }
+      responses:
+        '201':
+          description: Character created
+          content:
+            application/json:
+              schema: { $ref: 'schemas/player.json' }
+        '409': { description: Name already taken }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:    { type: string, format: email }
+        password: { type: string, minLength: 12 }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:    { type: string, format: email }
+        password: { type: string }
+
+    TokenPair:
+      type: object
+      required: [accessToken, refreshToken, tokenType, expiresIn]
+      properties:
+        accessToken:  { type: string }
+        refreshToken: { type: string }
+        tokenType:    { type: string, example: Bearer }
+        expiresIn:    { type: integer, description: seconds }
+
+    Account:
+      type: object
+      required: [id, email, createdAt]
+      properties:
+        id:        { type: string }
+        email:     { type: string, format: email }
+        createdAt: { type: string, format: date-time }
