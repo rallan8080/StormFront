@@ -1,13 +1,25 @@
 # Local development stack for StormFront.
 #
-# Usage:
-#   1. Copy .env.example to .env and set JWT_SECRET
-#   2. docker compose up --build
+# This base file holds only the shared services (mongo, redis, client). The
+# `server` service — either the Python/FastAPI or Node/NestJS backend — lives
+# in a sibling file and is selected explicitly:
+#
+#   # Python, prod-ish
+#   docker compose -f docker-compose.yml -f docker-compose.python.yml up --build
+#   # Python, hot reload
+#   docker compose -f docker-compose.yml -f docker-compose.python.yml -f docker-compose.python.override.yml up --build
+#   # Node, prod-ish
+#   docker compose -f docker-compose.yml -f docker-compose.node.yml up --build
+#   # Node, hot reload
+#   docker compose -f docker-compose.yml -f docker-compose.node.yml -f docker-compose.node.override.yml up --build
+#
+# Copy .env.example to .env and set JWT_SECRET before any of the above.
 #
 # Services:
 #   mongo   MongoDB 7, persists to a named volume
 #   redis   Redis 7, reserved for cross-process WS fan-out
-#   server  FastAPI server, depends on mongo + redis being healthy
+#   server  Backend, from docker-compose.python.yml or docker-compose.node.yml
+#   client  React/Vite app, depends on server
 
 services:
   mongo:
@@ -35,36 +47,13 @@ services:
       timeout: 3s
       retries: 5
 
-  server:
-    build:
-      context: ./server
-      target: runtime
-    depends_on:
-      mongo:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      MONGO_URL: mongodb://mongo:27017
-      MONGO_DB: stormfront
-      REDIS_URL: redis://redis:6379/0
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env (>= 16 chars)}
-      JWT_ALGORITHM: HS256
-      JWT_ACCESS_TTL_MIN: "15"
-      JWT_REFRESH_TTL_DAYS: "30"
-      CORS_ORIGINS: '["http://localhost:5173"]'
-      LOG_LEVEL: info
-    ports:
-      - "8000:8000"
-    restart: unless-stopped
-
   client:
     build:
       context: ./client
       target: runtime
     depends_on:
       - server
-    # Port mapping intentionally lives in docker-compose.override.yml so the
+    # Port mapping intentionally lives in the *.override.yml files so the
     # dev stage's 5173:5173 doesn't have to fight the prod stage's 5173:80
     # via Compose's list-merge semantics. A separate prod compose file can
     # publish 5173:80 (or 80:80) when there is one.

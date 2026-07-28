@@ -1,9 +1,14 @@
-# Developer override: enables hot reload on the server.
+# Developer override: enables hot reload on the Python server + client.
 #
-# Compose auto-loads this file when running `docker compose up` from this
-# directory, so the base docker-compose.yml stays production-ish. To run
-# without it (e.g. to mimic prod locally), use:
-#   docker compose -f docker-compose.yml up
+# The `server` service now lives in docker-compose.python.yml /
+# docker-compose.node.yml rather than the base file, so Compose's automatic
+# override-file loading no longer applies — pass this explicitly:
+#   docker compose -f docker-compose.yml -f docker-compose.python.yml -f docker-compose.python.override.yml up --build
+#
+# For a prod-ish run without hot reload, drop this file:
+#   docker compose -f docker-compose.yml -f docker-compose.python.yml up --build
+#
+# See the root README for the Node equivalents.
 
 services:
   server:

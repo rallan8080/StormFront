@@ -46,6 +46,34 @@ jobs:
           JWT_SECRET: ci-test-secret-not-real-just-long-enough
         run: pytest -v
 
+  server-node:
+    name: Server (NestJS)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        working-directory: server-node
+        run: npm install
+
+      - name: Lint
+        working-directory: server-node
+        run: npm run lint
+
+      - name: Build
+        working-directory: server-node
+        run: npm run build
+
+      - name: Test
+        working-directory: server-node
+        run: npm test -- --ci
+
   client:
     name: Client (Vite/React)
     runs-on: ubuntu-latest

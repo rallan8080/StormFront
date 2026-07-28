@@ -38,9 +38,10 @@ client/build/
 Thumbs.db
 
 # --- Docker ---
-# Note: docker-compose.override.yml is intentionally NOT ignored — it
-# carries the dev-target selection, port mapping, and bind mounts that
-# `docker compose up` needs to give a fresh clone a working dev stack.
+# Note: docker-compose.*.yml / docker-compose.*.override.yml are
+# intentionally NOT ignored — they carry the per-backend service
+# definitions, dev-target selection, port mapping, and bind mounts that a
+# fresh clone needs for a working dev stack (see root README).
 
 # --- Logs ---
 *.log
