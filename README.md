@@ -18,17 +18,17 @@ across the boundaries of:
 
 ## Stack
 
-| Layer            | Choice                                        |
-| ---------------- | --------------------------------------------- |
-| Backend          | Python 3.12 + FastAPI + native WebSockets     |
-| Async DB driver  | Motor (async MongoDB)                         |
-| Database         | MongoDB                                       |
-| Real-time fan-out| Redis pub/sub (for cross-process scale-out)   |
-| Frontend         | React + TypeScript + Vite + xterm.js          |
-| Auth             | JWT access + refresh tokens                   |
-| Container runtime| Docker + Docker Compose locally               |
-| Deploy target    | Azure Container Apps                          |
-| CI               | GitHub Actions                                |
+| Layer            | Choice                                                          |
+| ---------------- | ---------------------------------------------------------------|
+| Backend          | Two interchangeable implementations of the same spec-driven API: `server/` (Python 3.12 + FastAPI + native WebSockets) and `server-node/` (NestJS + Express platform + `ws`). Only one runs at a time. |
+| Async DB driver  | Motor (Python) / official `mongodb` driver (Node)               |
+| Database         | MongoDB                                                          |
+| Real-time fan-out| Redis pub/sub (for cross-process scale-out)                      |
+| Frontend         | React + TypeScript + Vite + xterm.js                             |
+| Auth             | JWT access + refresh tokens                                      |
+| Container runtime| Docker + Docker Compose locally                                  |
+| Deploy target    | Azure Container Apps                                             |
+| CI               | GitHub Actions                                                   |
 
 ## Repository layout
 
@@ -43,11 +43,40 @@ stormfront/
 │     ├─ npc.json
 │     ├─ player.json
 │     └─ room.json
-├─ server/                   FastAPI service        (TBD)
-├─ client/                   React + xterm.js app   (TBD)
-├─ docker-compose.yml                              (TBD)
-└─ .github/workflows/                              (TBD)
+├─ server/                   FastAPI service (reference implementation)
+├─ server-node/              NestJS service (in-progress port; see its README)
+├─ client/                   React + xterm.js app
+├─ docker-compose.yml                 shared services (mongo, redis, client)
+├─ docker-compose.python.yml          Python `server` service
+├─ docker-compose.python.override.yml Python dev overrides (hot reload)
+├─ docker-compose.node.yml            Node `server` service
+├─ docker-compose.node.override.yml   Node dev overrides (hot reload)
+└─ .github/workflows/
 ```
+
+## Choosing a backend
+
+Both backends implement the same contract in `spec/`, so the client doesn't
+care which one is running — only one can run at a time (both bind host port
+8000). Copy `.env.example` to `.env` and set `JWT_SECRET` first, then:
+
+```bash
+# Python, hot reload (recommended for local dev)
+docker compose -f docker-compose.yml -f docker-compose.python.yml -f docker-compose.python.override.yml up --build
+
+# Python, prod-ish (no reload)
+docker compose -f docker-compose.yml -f docker-compose.python.yml up --build
+
+# Node, hot reload
+docker compose -f docker-compose.yml -f docker-compose.node.yml -f docker-compose.node.override.yml up --build
+
+# Node, prod-ish
+docker compose -f docker-compose.yml -f docker-compose.node.yml up --build
+```
+
+`server-node/` is scaffolding: it boots, connects to Mongo, and serves
+`/healthz` for real, but auth/characters/`/me`/the game WebSocket protocol
+are stubbed pending a full port — see `server-node/README.md`.
 
 ## Spec-driven workflow
 
